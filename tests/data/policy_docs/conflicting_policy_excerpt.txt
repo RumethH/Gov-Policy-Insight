@@ -1,0 +1,2 @@
+Policy Directive A states risk assessments must be completed annually.
+Policy Directive B states risk assessments must be completed quarterly.

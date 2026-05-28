@@ -1,0 +1,2 @@
+NSW government agencies must report cyber security incidents within 24 hours of detection.
+Incident reports must include impact, scope, and mitigation actions.

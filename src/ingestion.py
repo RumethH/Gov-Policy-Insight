@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader
@@ -34,16 +35,26 @@ chunks = splitter.split_documents(all_docs)
 print(f"Split into {len(chunks)} chunks")
 
 # Initialize embeddings
-embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
 # Initialize ChromaDB
 persist_directory = os.getenv("CHROMA_DB_PATH", "./chroma_db")
 
-print(f"Creating vector store in {persist_directory}...")
-vectorstore = Chroma.from_documents(
-    documents=chunks,
-    embedding=embeddings,
+print(f"Initializing vector store in {persist_directory}...")
+# Create an empty vector store first
+vectorstore = Chroma(
+    embedding_function=embeddings,
     persist_directory=persist_directory
 )
+
+# Ingest in batches to avoid rate limits
+batch_size = 50
+for i in range(0, len(chunks), batch_size):
+    batch = chunks[i:i + batch_size]
+    print(f"Ingesting batch {i//batch_size + 1} ({len(batch)} chunks)...")
+    vectorstore.add_documents(batch)
+    if i + batch_size < len(chunks):
+        print("Sleeping for 65 seconds to respect rate limits...")
+        time.sleep(65)
 
 print("Ingestion complete. Vector store saved.")
