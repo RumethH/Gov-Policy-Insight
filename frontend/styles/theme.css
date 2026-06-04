@@ -1,0 +1,10 @@
+/* 
+   Minimalist Overrides 
+   Reducing custom styling to allow Streamlit's native light mode to shine.
+*/
+
+.block-container {
+  max-width: 800px;
+  padding-top: 2rem;
+  padding-bottom: 5rem;
+}
