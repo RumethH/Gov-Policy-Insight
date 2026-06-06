@@ -89,8 +89,18 @@ def fake_chain(policy_documents: list[Document]) -> RAGChain:
             "NSW cyber incident reporting obligations": policy_documents[:2],
         }
     )
+    chain.embeddings = type("E", (), {"embed_query": lambda self, q: [0.1] * 768})()
+    chain.cache = type("C", (), {
+        "get": lambda self, q, **kwargs: None, 
+        "set": lambda self, q, r, **kwargs: None
+    })()
     chain.ranker = FakeRanker()
     chain.security = FakeSecurity(inject=False)
+    
+    # Override retrieve_docs to handle kwargs
+    original_search = chain.vectorstore.similarity_search
+    chain.retrieve_docs = lambda query, k=10, **kwargs: original_search(query, k=k)
+    
     return chain
 
 

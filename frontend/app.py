@@ -23,20 +23,84 @@ def handle_user_prompt(prompt: str) -> None:
     state = st.session_state
     service = build_chat_service(state.service_mode)
 
+    # 1. Add to state and render immediately
     state.messages.append({"role": "user", "content": prompt, "citations": []})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
     state.is_loading = True
     
-    # Simple simulated loading with standard spinner
-    with st.spinner("Thinking..."):
-        response = service.ask(prompt=prompt, conversation_id=state.conversation_id, stream=False)
+    # 2. Handle Assistant Response
+    if state.service_mode == "local_rag":
+        with st.spinner("Thinking..."):
+            try:
+                response_stream = service.ask(prompt=prompt, conversation_id=state.conversation_id, stream=True)
+            except Exception as e:
+                st.error(f"Error connecting to RAG service: {e}")
+                state.is_loading = False
+                return
+            
+        with st.chat_message("assistant"):
+            # Use lists to capture data from the generator closure
+            full_text_container = [""]
+            citations_container = [[]]
+            
+            def get_stream_text():
+                try:
+                    for chunk in response_stream:
+                        text = chunk.get("answer_chunk", "")
+                        full_text_container[0] += text
+                        citations_container[0] = chunk.get("citations", [])
+                        yield text
+                except Exception as e:
+                    yield f"\n\n⚠️ *Stream interrupted: {e}*"
 
-    state.messages.append(
-        {
-            "role": "assistant",
-            "content": response["answer"],
-            "citations": response.get("citations", []),
-        }
-    )
+            st.write_stream(get_stream_text())
+            
+            # Use captured values
+            final_text = full_text_container[0]
+            final_citations = citations_container[0]
+            
+            if not final_text:
+                final_text = "I'm sorry, I couldn't generate a response. Please try rephrasing your question."
+                st.warning(final_text)
+            
+            from components.chat_thread import _render_citations
+            _render_citations(final_citations)
+            
+            state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": final_text,
+                    "citations": final_citations,
+                }
+            )
+    else:
+        with st.spinner("Thinking..."):
+            try:
+                response = service.ask(prompt=prompt, conversation_id=state.conversation_id, stream=False)
+                final_text = response.get("answer", "")
+                final_citations = response.get("citations", [])
+            except Exception as e:
+                final_text = f"Error: {e}"
+                final_citations = []
+        
+        if not final_text:
+            final_text = "No response received from the service."
+
+        with st.chat_message("assistant"):
+            st.markdown(final_text)
+            from components.chat_thread import _render_citations
+            _render_citations(final_citations)
+            
+        state.messages.append(
+            {
+                "role": "assistant",
+                "content": final_text,
+                "citations": final_citations,
+            }
+        )
+
     state.is_loading = False
 
 

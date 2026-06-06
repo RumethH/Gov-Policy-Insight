@@ -18,16 +18,29 @@ class ChatService(Protocol):
 class MockChatService:
     """Local development fallback with realistic shape."""
 
-    def ask(self, prompt: str, conversation_id: str, stream: bool = False) -> Dict[str, Any]:
-        _ = conversation_id, stream
-        time.sleep(1.2)
+    def ask(self, prompt: str, conversation_id: str, stream: bool = False) -> Any:
+        _ = conversation_id
+        answer = (
+            "Based on current policy guidance, agencies should establish clear ownership, "
+            "document controls, and periodic compliance reviews. If you share a specific "
+            "policy title, I can provide a grounded summary with obligations and timelines."
+        )
+        citations = [{"source": "Policy-Guide-Sample.pdf", "page": 3}]
+        
+        if stream:
+            def chunk_generator():
+                time.sleep(1.2)
+                words = answer.split(" ")
+                for i, word in enumerate(words):
+                    yield {
+                        "answer_chunk": word + (" " if i < len(words) - 1 else ""),
+                        "citations": citations
+                    }
+            return chunk_generator()
+        
         return {
-            "answer": (
-                "Based on current policy guidance, agencies should establish clear ownership, "
-                "document controls, and periodic compliance reviews. If you share a specific "
-                "policy title, I can provide a grounded summary with obligations and timelines."
-            ),
-            "citations": [{"source": "Policy-Guide-Sample.pdf", "page": 3}],
+            "answer": answer,
+            "citations": citations,
             "metadata": {"mode": "mock"},
         }
 
@@ -40,19 +53,34 @@ class MockChatService:
         )
 
 
+import sys
+from pathlib import Path
+
 class LocalRAGChatService:
     """Adapter around the existing in-repo RAG chain."""
 
     def __init__(self) -> None:
+        # Ensure project root is in sys.path
+        root = Path(__file__).parents[2]
+        if str(root) not in sys.path:
+            sys.path.append(str(root))
+            
         try:
             from src.chains import RAGChain  # lazy import to keep startup fast
         except ImportError as exc:
             raise RuntimeError(f"Unable to import local RAG chain: {exc}") from exc
         self._chain = RAGChain()
 
-    def ask(self, prompt: str, conversation_id: str, stream: bool = False) -> Dict[str, Any]:
-        _ = conversation_id, stream
-        return self._chain.run(prompt)
+    def ask(self, prompt: str, conversation_id: str, stream: bool = False) -> Any:
+        _ = conversation_id
+        if stream:
+            stream_gen, citations = self._chain.run(prompt, stream=True)
+            def chunk_generator():
+                for chunk in stream_gen:
+                    yield {"answer_chunk": chunk.content, "citations": citations}
+            return chunk_generator()
+        else:
+            return self._chain.run(prompt, stream=False)
 
     def greeting(self, conversation_id: str) -> str:
         _ = conversation_id
@@ -120,7 +148,10 @@ def build_chat_service(mode: str) -> ChatService:
     if mode == "local_rag":
         try:
             return LocalRAGChatService()
-        except Exception:
+        except Exception as e:
+            import streamlit as st
+            st.error(f"Failed to initialize Local RAG: {e}")
+            # Still return Mock for now but at least show the error
             return MockChatService()
 
     if mode == "api":

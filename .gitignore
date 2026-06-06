@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+cache.sqlite
+chroma_db/
+.pytest_cache/
+.DS_Store
+flashrank_models/

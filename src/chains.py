@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
 # Add project root to sys.path to allow absolute imports from src
@@ -15,8 +15,10 @@ from flashrank import Ranker, RerankRequest
 
 try:
     from src.security import SecurityManager
+    from src.cache import SemanticCache
 except ImportError:
     from security import SecurityManager
+    from cache import SemanticCache
 
 load_dotenv()
 
@@ -28,6 +30,7 @@ class RAGChain:
         2. Vector Store (ChromaDB)
         3. Re-ranker (FlashRank)
         4. Security Manager
+        5. Semantic Cache
         """
         # 1. Initialize Embeddings
         self.embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
@@ -41,16 +44,19 @@ class RAGChain:
 
         # 3. Initialize LLM
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-3.5-flash",
+            model="gemini-flash-latest",
             temperature=0,
             convert_system_message_to_human=True
         )
 
         # 4. Initialize FlashRank Ranker
-        self.ranker = Ranker()
+        self.ranker = Ranker(cache_dir="flashrank_models")
 
         # 5. Initialize Security Manager
         self.security = SecurityManager()
+
+        # 6. Initialize Semantic Cache
+        self.cache = SemanticCache()
 
     def rewrite_query(self, query: str) -> List[str]:
         """
@@ -77,10 +83,12 @@ class RAGChain:
             
         return queries
 
-    def retrieve_docs(self, query: str, k: int = 10) -> List[Any]:
+    def retrieve_docs(self, query: str, k: int = 10, query_embedding: Optional[List[float]] = None) -> List[Any]:
         """
         Retrieve relevant documents from the vector store.
         """
+        if query_embedding:
+            return self.vectorstore.similarity_search_by_vector(query_embedding, k=k)
         return self.vectorstore.similarity_search(query, k=k)
 
     def rerank_docs(self, query: str, docs: List[Any]) -> List[Any]:
@@ -116,7 +124,7 @@ class RAGChain:
         
         return ranked_docs
 
-    def generate_response(self, query: str, context_docs: List[Any]) -> Dict[str, Any]:
+    def generate_response(self, query: str, context_docs: List[Any], stream: bool = False) -> Any:
         """
         Generate a final response using the retrieved context and a RAG prompt.
         Ensures citations are included.
@@ -146,8 +154,7 @@ class RAGChain:
         """)
 
         chain = prompt | self.llm
-        response = chain.invoke({"context": context_text, "query": query})
-
+        
         # Extract unique citations
         citations = []
         seen = set()
@@ -162,29 +169,84 @@ class RAGChain:
                 })
                 seen.add(cite_str)
 
-        return {
-            "answer": response.content,
-            "citations": citations
-        }
+        if stream:
+            return chain.stream({"context": context_text, "query": query}), citations
+        else:
+            response = chain.invoke({"context": context_text, "query": query})
+            return {
+                "answer": response.content,
+                "citations": citations
+            }
 
-    def run(self, query: str) -> Dict[str, Any]:
+    def run(self, query: str, stream: bool = False) -> Any:
         """
         The main entry point for the RAG pipeline.
+        Optimized with parallel retrieval, throttled reranking, and semantic caching.
         """
+        import concurrent.futures
+
         # 0. Security Check
         if self.security.check_injection(query):
+            error_msg = "Potential prompt injection detected. Request denied."
+            if stream:
+                def error_gen(): 
+                    class Chunk: 
+                        def __init__(self, c): self.content = c
+                    yield Chunk(error_msg)
+                return error_gen(), []
             return {
-                "answer": "Potential prompt injection detected. Request denied.",
+                "answer": error_msg,
                 "citations": []
             }
         
-        # 1. Multi-Query Rewrite
-        queries = self.rewrite_query(query)
+        # Pre-compute query embedding once to save API calls
+        try:
+            query_embedding = self.embeddings.embed_query(query)
+        except Exception as e:
+            print(f"⚠️ Embedding generation failed: {e}")
+            query_embedding = None
+
+        # 1. Semantic Cache Check
+        try:
+            cached_response = self.cache.get(query, query_embedding=query_embedding)
+            if cached_response:
+                if stream:
+                    def cache_gen():
+                        class Chunk:
+                            def __init__(self, c): self.content = c
+                        # Split into small chunks to simulate typing feel
+                        words = cached_response["answer"].split(" ")
+                        for i, word in enumerate(words):
+                            yield Chunk(word + (" " if i < len(words) - 1 else ""))
+                    return cache_gen(), cached_response["citations"]
+                return cached_response
+        except Exception as e:
+            print(f"⚠️ Cache check failed: {e}")
         
-        # 2. Retrieve Documents for all queries
+        # 2. Multi-Query Rewrite
+        try:
+            queries = self.rewrite_query(query)
+        except Exception as e:
+            print(f"⚠️ Query rewrite failed: {e}. Falling back to original query.")
+            queries = [query]
+        
+        # 3. Parallel Retrieval
         all_docs = []
-        for q in queries:
-            all_docs.extend(self.retrieve_docs(q, k=5))
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            # Map retrieval tasks across all queries
+            futures = []
+            for q in queries:
+                if q == query and query_embedding:
+                    # Reuse pre-computed embedding for original query
+                    futures.append(executor.submit(self.retrieve_docs, q, k=5, query_embedding=query_embedding))
+                else:
+                    futures.append(executor.submit(self.retrieve_docs, q, k=5))
+
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    all_docs.extend(future.result())
+                except Exception as exc:
+                    print(f"Query retrieval generated an exception: {exc}")
             
         # Deduplicate docs based on content
         unique_docs = []
@@ -194,18 +256,40 @@ class RAGChain:
                 unique_docs.append(doc)
                 seen_content.add(doc.page_content)
         
-        # 3. Re-rank Documents (using original query)
-        ranked_docs = self.rerank_docs(query, unique_docs)
+        # 4. Throttled Re-ranking (Limit input to top 15 docs for speed)
+        docs_to_rerank = unique_docs[:15]
+        ranked_docs = self.rerank_docs(query, docs_to_rerank)
         
-        # 4. Generate Response with Citations
+        # 5. Generate Response with Citations
         # Use top 5 re-ranked docs for generation
-        response = self.generate_response(query, ranked_docs[:5])
-        
-        # 5. Redact PII from response
-        if os.getenv("PII_REDACTION_ENABLED", "true").lower() == "true":
-            response["answer"] = self.security.redact_pii(response["answer"])
-        
-        return response
+        if stream:
+            stream_gen, citations = self.generate_response(query, ranked_docs[:5], stream=True)
+            
+            # We'll need a wrapper to capture the full response and cache it
+            def caching_gen():
+                full_answer = ""
+                for chunk in stream_gen:
+                    full_answer += chunk.content
+                    yield chunk
+                # Cache the complete result after stream ends, if it's not empty
+                if full_answer.strip():
+                    self.cache.set(query, {"answer": full_answer, "citations": citations}, query_embedding=query_embedding)
+                else:
+                    print(f"⚠️ Warning: Empty response generated for query '{query}'. Not caching.")
+            
+            return caching_gen(), citations
+        else:
+            response = self.generate_response(query, ranked_docs[:5], stream=False)
+            # Redact PII from response
+            if os.getenv("PII_REDACTION_ENABLED", "true").lower() == "true":
+                response["answer"] = self.security.redact_pii(response["answer"])
+            
+            # Cache the result if not empty
+            if response.get("answer", "").strip():
+                self.cache.set(query, response, query_embedding=query_embedding)
+            else:
+                print(f"⚠️ Warning: Empty response generated for query '{query}'. Not caching.")
+            return response
 
 if __name__ == "__main__":
     # Quick testing logic

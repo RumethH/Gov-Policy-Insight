@@ -13,18 +13,20 @@ def test_e2e_conflicting_docs_response_retains_citations(monkeypatch) -> None:
         {"check_injection": lambda self, text: False, "redact_pii": lambda self, text: text},
     )()
     chain.rewrite_query = lambda q: [q]  # noqa: ARG005
-    chain.retrieve_docs = lambda q, k=5: [  # noqa: ARG005
+    chain.retrieve_docs = lambda q, k=5, **kwargs: [  # noqa: ARG005
         Document(page_content="Policy A says annual review.", metadata={"source": "a.pdf", "page": 3}),
         Document(page_content="Policy B says quarterly review.", metadata={"source": "b.pdf", "page": 7}),
     ]
     chain.rerank_docs = lambda query, docs: docs  # noqa: ARG005
-    chain.generate_response = lambda query, docs: {  # noqa: ARG005
+    chain.generate_response = lambda query, docs, **kwargs: {  # noqa: ARG005
         "answer": (
             "Documents conflict: annual and quarterly cycles are both specified "
             "[a.pdf, Page 3] [b.pdf, Page 7]."
         ),
         "citations": [{"source": "a.pdf", "page": 3}, {"source": "b.pdf", "page": 7}],
     }
+    chain.embeddings = type("E", (), {"embed_query": lambda self, q: [0.1] * 768})()
+    chain.cache = type("C", (), {"get": lambda self, q, **kwargs: None, "set": lambda self, q, r, **kwargs: None})()
     monkeypatch.setenv("PII_REDACTION_ENABLED", "false")
 
     result = chain.run("How often should policy reviews occur?")

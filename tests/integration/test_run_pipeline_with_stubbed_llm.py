@@ -13,17 +13,19 @@ def test_run_pipeline_with_stubbed_components(monkeypatch) -> None:
         {"check_injection": lambda self, text: False, "redact_pii": lambda self, text: text},
     )()
     chain.rewrite_query = lambda q: [q]  # noqa: ARG005
-    chain.retrieve_docs = lambda q, k=5: [  # noqa: ARG005
+    chain.retrieve_docs = lambda q, k=5, **kwargs: [  # noqa: ARG005
         Document(
             page_content="Policy says agencies must report cyber incidents in 24 hours.",
             metadata={"source": "nsw_cyber_policy.pdf", "page": 2},
         )
     ]
     chain.rerank_docs = lambda query, docs: docs  # noqa: ARG005
-    chain.generate_response = lambda query, docs: {  # noqa: ARG005
+    chain.generate_response = lambda query, docs, **kwargs: {  # noqa: ARG005
         "answer": "Report incidents in 24 hours [nsw_cyber_policy.pdf, Page 2].",
         "citations": [{"source": "nsw_cyber_policy.pdf", "page": 2}],
     }
+    chain.embeddings = type("E", (), {"embed_query": lambda self, q: [0.1] * 768})()
+    chain.cache = type("C", (), {"get": lambda self, q, **kwargs: None, "set": lambda self, q, r, **kwargs: None})()
 
     monkeypatch.setenv("PII_REDACTION_ENABLED", "false")
     result = chain.run("What is incident reporting SLA?")

@@ -32,12 +32,14 @@ def test_run_happy_path_with_dedup_and_redaction(monkeypatch) -> None:
         },
     )()
     chain.rewrite_query = lambda q: ["q1", "q2"]  # noqa: ARG005
-    chain.retrieve_docs = lambda q, k=5: [doc_a, doc_c] if q == "q1" else [doc_b]  # noqa: ARG005
+    chain.retrieve_docs = lambda q, k=5, **kwargs: [doc_a, doc_c] if q == "q1" else [doc_b]  # noqa: ARG005
     chain.rerank_docs = lambda query, docs: docs  # noqa: ARG005
-    chain.generate_response = lambda query, docs: {  # noqa: ARG005
+    chain.generate_response = lambda query, docs, **kwargs: {  # noqa: ARG005
         "answer": "John Doe report",
         "citations": [{"source": d.metadata["source"], "page": d.metadata["page"]} for d in docs],
     }
+    chain.embeddings = type("E", (), {"embed_query": lambda self, q: [0.1] * 768})()
+    chain.cache = type("C", (), {"get": lambda self, q, **kwargs: None, "set": lambda self, q, r, **kwargs: None})()
 
     monkeypatch.setenv("PII_REDACTION_ENABLED", "true")
     result = chain.run("policy query")
