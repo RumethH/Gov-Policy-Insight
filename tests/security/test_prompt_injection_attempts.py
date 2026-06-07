@@ -1,6 +1,6 @@
 import pytest
 
-from src.security import SecurityManager
+from backend.core.security import SecurityManager
 
 
 @pytest.mark.security

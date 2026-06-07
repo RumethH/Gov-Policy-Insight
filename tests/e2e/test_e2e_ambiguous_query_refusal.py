@@ -1,6 +1,6 @@
 import pytest
 
-from src.chains import RAGChain
+from backend.core.chains import RAGChain
 
 
 @pytest.mark.e2e

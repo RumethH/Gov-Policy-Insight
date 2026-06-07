@@ -3,8 +3,8 @@ import sys
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
-# Add project root to sys.path to allow absolute imports from src
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to sys.path to allow absolute imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 # Import necessary LangChain and other components
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
@@ -13,12 +13,8 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 from flashrank import Ranker, RerankRequest
 
-try:
-    from src.security import SecurityManager
-    from src.cache import SemanticCache
-except ImportError:
-    from security import SecurityManager
-    from cache import SemanticCache
+from backend.core.security import SecurityManager
+from backend.core.cache import SemanticCache
 
 load_dotenv()
 

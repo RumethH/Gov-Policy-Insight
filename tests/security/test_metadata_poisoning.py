@@ -1,7 +1,7 @@
 import pytest
 from langchain_core.documents import Document
 
-from src.chains import RAGChain
+from backend.core.chains import RAGChain
 
 
 @pytest.mark.security
@@ -21,7 +21,7 @@ def test_generate_response_handles_poison_like_metadata_strings(mocker) -> None:
 
     chain = object.__new__(RAGChain)
     chain.llm = object()
-    mocker.patch("src.chains.ChatPromptTemplate.from_template", return_value=FakePrompt())
+    mocker.patch("backend.core.chains.ChatPromptTemplate.from_template", return_value=FakePrompt())
     docs = [Document(page_content="chunk text", metadata={"source": "../../../tmp/evil<script>.pdf"})]
 
     result = chain.generate_response("query", docs)

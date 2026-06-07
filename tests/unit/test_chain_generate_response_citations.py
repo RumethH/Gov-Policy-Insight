@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import pytest
 from langchain_core.documents import Document
 
-from src.chains import RAGChain
+from backend.core.chains import RAGChain
 
 
 @dataclass
@@ -28,7 +28,7 @@ class FakePrompt:
 def test_generate_response_builds_unique_citations(mocker) -> None:
     chain = object.__new__(RAGChain)
     chain.llm = object()
-    mocker.patch("src.chains.ChatPromptTemplate.from_template", return_value=FakePrompt())
+    mocker.patch("backend.core.chains.ChatPromptTemplate.from_template", return_value=FakePrompt())
     docs = [
         Document(page_content="A", metadata={"source": "/tmp/policy.pdf", "page": 2}),
         Document(page_content="B", metadata={"source": "/tmp/policy.pdf", "page": 2}),

@@ -12,7 +12,7 @@ load_dotenv()
 
 all_docs = []
 
-base_dir = Path(__file__).resolve().parent.parent
+base_dir = Path(__file__).resolve().parent.parent.parent
 data_dir = base_dir / "data"
 
 # Get all PDFs in the data folder 

@@ -2,7 +2,7 @@ import os
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from src.chains import RAGChain
+from backend.core.chains import RAGChain
 
 app = FastAPI(title="ChatGPI Backend")
 

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from src.chains import RAGChain
+from backend.core.chains import RAGChain
 
 
 @dataclass
@@ -28,7 +28,7 @@ class FakePrompt:
 def test_rewrite_query_parses_lines_and_includes_original(mocker) -> None:
     chain = object.__new__(RAGChain)
     chain.llm = object()
-    mocker.patch("src.chains.ChatPromptTemplate.from_template", return_value=FakePrompt())
+    mocker.patch("backend.core.chains.ChatPromptTemplate.from_template", return_value=FakePrompt())
 
     original = "Original policy query"
     queries = chain.rewrite_query(original)

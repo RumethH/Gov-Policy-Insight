@@ -66,7 +66,7 @@ class LocalRAGChatService:
             sys.path.append(str(root))
             
         try:
-            from src.chains import RAGChain  # lazy import to keep startup fast
+            from backend.core.chains import RAGChain  # lazy import to keep startup fast
         except ImportError as exc:
             raise RuntimeError(f"Unable to import local RAG chain: {exc}") from exc
         self._chain = RAGChain()

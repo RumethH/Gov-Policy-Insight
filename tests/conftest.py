@@ -6,7 +6,7 @@ from typing import Any, Iterable
 import pytest
 from langchain_core.documents import Document
 
-from src.chains import RAGChain
+from backend.core.chains import RAGChain
 
 
 @dataclass

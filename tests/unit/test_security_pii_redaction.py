@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.security import SecurityManager
+from backend.core.security import SecurityManager
 
 
 class StubAnalyzer:
