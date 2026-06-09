@@ -64,9 +64,15 @@ graph TD
 - [x] **Semantic Cache:** Implemented in `backend/core/cache.py`.
 - [ ] **Evaluation Suite:** Setup `Promptfoo` in the `evals/` directory to measure answer relevance and faithfulness.
 - [ ] **Memory:** Add conversation buffer memory to support multi-turn policy discussions.
-- [ ] **Deployment:** Dockerize the application for cloud deployment.
+- [x] **Deployment:** Dockerized for cloud deployment using AWS App Runner (Serverless).
 
-## 4. Project Folder Structure
+## 4. Deployment Strategy
+- **Platform:** AWS App Runner (Fargate-based serverless containers).
+- **Process Management:** `supervisord` manages both the FastAPI backend and Streamlit frontend within a single container for cost efficiency.
+- **CI/CD:** Automated builds via AWS ECR.
+- **Data Persistence:** Vector embeddings (ChromaDB) are bundled into the production container for low-latency, "read-only" demo performance.
+
+## 5. Project Folder Structure
 ```text
 gov-policy-insight/
 ├── data/               # NSW Policy PDFs (Cyber, Risk, Climate, etc.)

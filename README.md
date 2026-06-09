@@ -2,6 +2,8 @@
 
 A production-ready RAG (Retrieval-Augmented Generation) application designed for government policy analysis. This project focuses on deterministic evaluation, PII safety, and verifiable citations.
 
+**[Live Demo](https://go-5595fec1ed404b769a518c290d28ad7f.ecs.us-east-1.on.aws)**
+
 ## 🚀 Overview
 
 Gov-Policy-Insight allows users to query complex public policy documents and receive accurate, cited answers. Unlike a standard POC, this system includes:
@@ -13,6 +15,7 @@ Gov-Policy-Insight allows users to query complex public policy documents and rec
 
 ## 🛠️ Tech Stack
 
+- **Cloud:** AWS App Runner (Serverless Containers)
 - **Interface:** [Streamlit](https://streamlit.io/)
 - **API Framework:** [FastAPI](https://fastapi.tiangolo.com/)
 - **Orchestration:** [LangChain](https://www.langchain.com/)
@@ -96,6 +99,16 @@ docker-compose up --build
 ```
 - **UI:** http://localhost:8501
 - **API Docs:** http://localhost:8000/docs
+
+---
+
+## ☁️ Deployment (AWS App Runner)
+
+This project is deployed using **AWS App Runner**, which provides a serverless environment for containerized applications.
+
+- **URL:** [https://go-5595fec1ed404b769a518c290d28ad7f.ecs.us-east-1.on.aws](https://go-5595fec1ed404b769a518c290d28ad7f.ecs.us-east-1.on.aws)
+- **Architecture:** A single container managed by `supervisord` runs both the Streamlit frontend and FastAPI backend.
+- **Configuration:** See `AWS_DEPLOYMENT.md` for the full deployment guide.
 
 ---
 
