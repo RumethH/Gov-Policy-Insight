@@ -1,0 +1,41 @@
+# Production Dockerfile for AWS App Runner
+# Unified Container: FastAPI + Streamlit managed by Supervisor
+
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    libmagic1 \
+    libgomp1 \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code
+COPY . .
+
+# Ensure necessary directories exist
+RUN mkdir -p chroma_db
+
+# App Runner specific environment variables
+ENV PYTHONUNBUFFERED=1
+ENV CHROMA_DB_PATH=/app/chroma_db
+ENV PII_REDACTION_ENABLED=true
+
+# Expose ports
+# Note: App Runner only listens on one port. 
+# We'll expose 8501 (Streamlit) as the entry point.
+EXPOSE 8501
+EXPOSE 8000
+
+# Use Supervisor to run both processes
+CMD ["/usr/bin/supervisord", "-c", "/app/supervisord.conf"]

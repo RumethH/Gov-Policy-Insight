@@ -1,0 +1,11 @@
+.venv
+.git
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.db
+.DS_Store
+Screenshot 2026-05-30 at 6.02.39 pm.png
+cache.sqlite
