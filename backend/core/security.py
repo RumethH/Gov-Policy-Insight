@@ -1,4 +1,5 @@
 from presidio_analyzer import AnalyzerEngine
+from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
@@ -8,13 +9,27 @@ class SecurityManager:
         Initializes the Presidio Analyzer and Anonymizer.
         """
         try:
-            # Note: Requires a spaCy model (e.g., en_core_web_lg) to be installed.
-            self.analyzer = AnalyzerEngine()
+            # Configure Presidio to use the lightweight en_core_web_sm model
+            # to save memory and storage (especially on AWS EC2 Free Tier).
+            nlp_config = {
+                "nlp_engine_name": "spacy",
+                "models": [{"project_or_path": "en_core_web_sm", "model_name": "en"}]
+            }
+            provider = NlpEngineProvider(nlp_configuration=nlp_config)
+            nlp_engine = provider.create_engine()
+            
+            self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
             self.anonymizer = AnonymizerEngine()
-            print("✅ Security Manager initialized (PII & Redaction)")
+            print("✅ Security Manager initialized (PII & Redaction using en_core_web_sm)")
         except Exception as e:
-            print(f"❌ Error initializing Security Manager: {e}")
-            raise
+            try:
+                # Fallback to default model in case of any issues
+                self.analyzer = AnalyzerEngine()
+                self.anonymizer = AnonymizerEngine()
+                print("✅ Security Manager initialized (PII & Redaction using default model)")
+            except Exception as e2:
+                print(f"❌ Error initializing Security Manager: {e2}")
+                raise
     
     def redact_pii(self, text: str) -> str:
         """
