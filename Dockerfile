@@ -8,17 +8,21 @@ WORKDIR /app
 # - build-essential: required for some python packages
 # - curl: for healthchecks
 # - libmagic1: for file type detection
+# - libgomp1: required for OpenMP parallel computing (used by onnxruntime/FlashRank)
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     libmagic1 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip, setuptools and wheel to optimize build and resource usage
+# Then install dependencies
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code
 COPY . .
