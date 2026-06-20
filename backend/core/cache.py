@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import json
 import numpy as np
@@ -5,8 +6,8 @@ from typing import Optional, Dict, Any, List
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 class SemanticCache:
-    def __init__(self, db_path: str = "cache.sqlite", threshold: float = 0.95):
-        self.db_path = db_path
+    def __init__(self, db_path: Optional[str] = None, threshold: float = 0.95):
+        self.db_path = db_path or os.getenv("CACHE_DB_PATH", "cache.sqlite")
         self.threshold = threshold
         self.embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
         self._init_db()
