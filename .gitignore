@@ -8,3 +8,11 @@ chroma_db/
 .pytest_cache/
 .DS_Store
 flashrank_models/
+
+# Project local files, screenshots, and supervisor configs
+API_KEY_STRATEGY.md
+requirements.txt.orig
+Screenshot 2026-05-30 at 6.02.39*.png
+supervisord.conf
+pytest.ini
+

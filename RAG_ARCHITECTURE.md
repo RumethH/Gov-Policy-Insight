@@ -67,10 +67,55 @@ graph TD
 - [x] **Deployment:** Dockerized for cloud deployment on AWS EC2, secured with Nginx and Let's Encrypt SSL.
 
 ## 4. Deployment Strategy
-- **Platform:** AWS EC2 Instance.
-- **Architecture:** Docker Compose orchestrates separate containers for the FastAPI backend and Streamlit frontend.
-- **Security & Routing:** Nginx acts as a reverse proxy mapping port 80/443 to Streamlit (port 8501) with WebSocket support, secured by a Let's Encrypt SSL certificate (HTTPS).
-- **Data Persistence:** Vector embeddings (ChromaDB) and the SQLite semantic cache are mounted as Docker volumes for data persistence.
+
+The application is deployed on an AWS EC2 instance running Ubuntu Server, using Docker Compose to orchestrate containers. It is secured behind a host-managed Nginx reverse proxy with SSL termination handled by Let's Encrypt.
+
+### A. Production Routing & Network Architecture
+
+The network architecture enforces strict port-hardening and container isolation to ensure maximum security:
+
+```mermaid
+graph TD
+    subgraph Public_Internet [Public Internet]
+        User[User Browser]
+    end
+
+    subgraph EC2_Host [AWS EC2 Host]
+        Nginx[Nginx Reverse Proxy]
+        Certbot[Certbot SSL Manager]
+        
+        subgraph Docker_Bridge_Network [Docker Bridge Network (Isolated)]
+            Frontend[Streamlit Frontend Container]
+            Backend[FastAPI Backend Container]
+        end
+    end
+
+    User -- "HTTPS (Port 443)" --> Nginx
+    User -- "HTTP (Port 80) -> Redirect" --> Nginx
+    Certbot -- "SSL Certificates" --> Nginx
+    Nginx -- "Proxy Pass with WS Upgrade (Port 8501)" --> Frontend
+    Frontend -- "API Requests (http://backend:8000)" --> Backend
+```
+
+### B. Deployment Components
+
+1. **Nginx Reverse Proxy:**
+   - Handles public traffic on ports `80` and `443` for `chat-gpi.com` and `www.chat-gpi.com`.
+   - Automatically redirects all port `80` (HTTP) requests to port `443` (HTTPS).
+   - Terminates SSL, decrypting incoming requests before forwarding them to Streamlit.
+   - Configured with high-performance buffer and timeout rules, plus full WebSocket support (crucial for Streamlit's state-syncing UI).
+
+2. **Certbot (Let's Encrypt):**
+   - Provisions valid TLS certificates for `chat-gpi.com`.
+   - Utilizes a daily systemd timer to handle automated renewal of the 90-day certificates.
+
+3. **Port Isolation & Hardening:**
+   - **AWS Security Group:** Only ports `22` (SSH, restricted IP ranges), `80` (HTTP), and `443` (HTTPS) are exposed.
+   - **Internal Isolation:** Streamlit (port `8501`) and FastAPI (port `8000`) are blocked from the outside world. This drastically minimizes the attack surface.
+   - **Docker Network:** All inter-container communication occurs securely over Docker's internal DNS routing without transiting the public web.
+
+4. **Data Persistence:**
+   - `ChromaDB` databases and the SQLite semantic cache are mapped as persistent host volumes so data is not lost when containers are rebuilt or restarted.
 
 ## 5. Project Folder Structure
 ```text

@@ -102,26 +102,22 @@ docker-compose up --build
 
 ---
 
-## ☁️ Deployment (AWS EC2)
+## ☁️ Production Deployment (AWS EC2 & Custom Domain)
 
-The application is currently deployed on an **AWS EC2 instance (`t2.micro`/`t3.micro`)** running Docker Compose.
+The application is deployed on an **AWS EC2 instance (`t2.micro`/`t3.micro`)** running Docker Compose, secured behind a production-grade Nginx reverse proxy and Let's Encrypt SSL.
 
-- **Current Demo URL:** [http://3.27.134.224:8501/](http://3.27.134.224:8501/)
+- **Live Demo URL:** [https://chat-gpi.com](https://chat-gpi.com)
 
-⚠️ **Security Warning:**
-The current live deployment is accessed via a raw public IPv4 address over unencrypted HTTP (`http://`). This is **potentially risky** and not recommended for production because:
-1. **No Encryption (Unsecured HTTP):** Chat queries, system inputs, and metadata travel across the network in plain text, making them vulnerable to interception.
-2. **IP Ephemerality:** If the EC2 instance is stopped and restarted, the public IP address will change, breaking the URL.
-3. **Browser Warnings:** Visitors will see a "Not Secure" warning in their address bar.
+### 🛡️ Production Security Architecture
+To meet enterprise and government safety standards, the deployment includes:
+1. **Full SSL Encryption (HTTPS):** All traffic between the user's browser and the server is encrypted using Let's Encrypt certificates managed by **Certbot** on the host.
+2. **Nginx Reverse Proxy:** An Nginx instance on the host handles SSL termination and reverse-proxies requests to the Streamlit application (port `8501`) over a secure WebSocket hookup.
+3. **Port Hardening & Isolation:**
+   - **Public Access:** Ports `80` (HTTP, redirects to `443`) and `443` (HTTPS) are open to the internet.
+   - **Internal Isolation:** Ports `8501` (Streamlit UI) and `8000` (FastAPI Backend) are blocked from direct public access in the AWS Security Group.
+   - **Private Communication:** The frontend Streamlit server communicates with the FastAPI backend internally within the isolated Docker Compose bridge network (`http://backend:8000`). This completely shields the raw API from public endpoints.
 
-### 🛡️ Planned Security Improvements
-To secure the application for public sharing, we are evaluating the following production-ready options:
-- **Option 1: Cloudflare Tunnel (Highly Recommended & Cost-Effective):** Secures the application behind a custom domain with automatic HTTPS/SSL without opening any inbound ports on the EC2 security group.
-- **Option 2: Dockerized Caddy Server Reverse Proxy:** Setting up Caddy in Docker alongside an Elastic IP and domain name. Caddy will automatically provision and renew Let's Encrypt HTTPS certificates for free.
-- **Option 3: DuckDNS + Caddy Reverse Proxy:** A completely free solution to obtain a custom subdomain (`yourdomain.duckdns.org`) with automated SSL certification if buying a custom domain is not desired.
-- **Option 4: AWS Application Load Balancer (ALB) + ACM:** Routing traffic through an AWS ALB with a free SSL certificate from AWS Certificate Manager (subject to AWS ALB hourly billing).
-
-For detailed instructions on launching and configuring the server, refer to [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md).
+For detailed host configuration, Nginx setup, and SSL renewal steps, refer to the [AWS EC2 Deployment Guide](AWS_DEPLOYMENT.md).
 
 ---
 
