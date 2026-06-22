@@ -64,13 +64,13 @@ graph TD
 - [x] **Semantic Cache:** Implemented in `backend/core/cache.py`.
 - [ ] **Evaluation Suite:** Setup `Promptfoo` in the `evals/` directory to measure answer relevance and faithfulness.
 - [ ] **Memory:** Add conversation buffer memory to support multi-turn policy discussions.
-- [x] **Deployment:** Dockerized for cloud deployment using AWS App Runner (Serverless).
+- [x] **Deployment:** Dockerized for cloud deployment on AWS EC2, secured with Nginx and Let's Encrypt SSL.
 
 ## 4. Deployment Strategy
-- **Platform:** AWS App Runner (Fargate-based serverless containers).
-- **Process Management:** `supervisord` manages both the FastAPI backend and Streamlit frontend within a single container for cost efficiency.
-- **CI/CD:** Automated builds via AWS ECR.
-- **Data Persistence:** Vector embeddings (ChromaDB) are bundled into the production container for low-latency, "read-only" demo performance.
+- **Platform:** AWS EC2 Instance.
+- **Architecture:** Docker Compose orchestrates separate containers for the FastAPI backend and Streamlit frontend.
+- **Security & Routing:** Nginx acts as a reverse proxy mapping port 80/443 to Streamlit (port 8501) with WebSocket support, secured by a Let's Encrypt SSL certificate (HTTPS).
+- **Data Persistence:** Vector embeddings (ChromaDB) and the SQLite semantic cache are mounted as Docker volumes for data persistence.
 
 ## 5. Project Folder Structure
 ```text

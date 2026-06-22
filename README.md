@@ -2,7 +2,7 @@
 
 A production-ready RAG (Retrieval-Augmented Generation) application designed for government policy analysis. This project focuses on deterministic evaluation, PII safety, and verifiable citations.
 
-**[Live Demo](https://go-5595fec1ed404b769a518c290d28ad7f.ecs.us-east-1.on.aws)**
+**[Live Demo](https://chat-gpi.com)**
 
 ## 🚀 Overview
 
@@ -15,7 +15,7 @@ Gov-Policy-Insight allows users to query complex public policy documents and rec
 
 ## 🛠️ Tech Stack
 
-- **Cloud:** AWS App Runner (Serverless Containers)
+- **Cloud:** AWS EC2 & Docker Compose
 - **Interface:** [Streamlit](https://streamlit.io/)
 - **API Framework:** [FastAPI](https://fastapi.tiangolo.com/)
 - **Orchestration:** [LangChain](https://www.langchain.com/)
@@ -102,13 +102,26 @@ docker-compose up --build
 
 ---
 
-## ☁️ Deployment (AWS App Runner)
+## ☁️ Deployment (AWS EC2)
 
-This project is deployed using **AWS App Runner**, which provides a serverless environment for containerized applications.
+The application is currently deployed on an **AWS EC2 instance (`t2.micro`/`t3.micro`)** running Docker Compose.
 
-- **URL:** [https://go-5595fec1ed404b769a518c290d28ad7f.ecs.us-east-1.on.aws](https://go-5595fec1ed404b769a518c290d28ad7f.ecs.us-east-1.on.aws)
-- **Architecture:** A single container managed by `supervisord` runs both the Streamlit frontend and FastAPI backend.
-- **Configuration:** See `AWS_DEPLOYMENT.md` for the full deployment guide.
+- **Current Demo URL:** [http://3.27.134.224:8501/](http://3.27.134.224:8501/)
+
+⚠️ **Security Warning:**
+The current live deployment is accessed via a raw public IPv4 address over unencrypted HTTP (`http://`). This is **potentially risky** and not recommended for production because:
+1. **No Encryption (Unsecured HTTP):** Chat queries, system inputs, and metadata travel across the network in plain text, making them vulnerable to interception.
+2. **IP Ephemerality:** If the EC2 instance is stopped and restarted, the public IP address will change, breaking the URL.
+3. **Browser Warnings:** Visitors will see a "Not Secure" warning in their address bar.
+
+### 🛡️ Planned Security Improvements
+To secure the application for public sharing, we are evaluating the following production-ready options:
+- **Option 1: Cloudflare Tunnel (Highly Recommended & Cost-Effective):** Secures the application behind a custom domain with automatic HTTPS/SSL without opening any inbound ports on the EC2 security group.
+- **Option 2: Dockerized Caddy Server Reverse Proxy:** Setting up Caddy in Docker alongside an Elastic IP and domain name. Caddy will automatically provision and renew Let's Encrypt HTTPS certificates for free.
+- **Option 3: DuckDNS + Caddy Reverse Proxy:** A completely free solution to obtain a custom subdomain (`yourdomain.duckdns.org`) with automated SSL certification if buying a custom domain is not desired.
+- **Option 4: AWS Application Load Balancer (ALB) + ACM:** Routing traffic through an AWS ALB with a free SSL certificate from AWS Certificate Manager (subject to AWS ALB hourly billing).
+
+For detailed instructions on launching and configuring the server, refer to [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md).
 
 ---
 
