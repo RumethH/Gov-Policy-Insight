@@ -45,10 +45,26 @@ def render_sidebar() -> Optional[str]:
             st.session_state.model_status = {
                 "mock": "Mock Assistant",
                 "local_rag": "Local RAG Chain",
-                "api": "FastAPI Placeholder",
+                "api": "FastAPI Backend",
             }[service_mode]
             st.rerun()
 
+        st.divider()
+        st.markdown("**Google Gemini API Key** *(optional)*")
+        st.caption("Provide your own key if the demo quota is exceeded.")
+        user_key = st.text_input(
+            "Gemini API Key",
+            value=st.session_state.get("guest_api_key", ""),
+            type="password",
+            placeholder="AIza...",
+            label_visibility="collapsed",
+        )
+        if user_key != st.session_state.get("guest_api_key", ""):
+            st.session_state.guest_api_key = user_key
+            if user_key:
+                st.success("Key saved for this session.")
+
+        st.divider()
         if st.button("Clear Conversation", use_container_width=True):
             action = "new_chat"
 
