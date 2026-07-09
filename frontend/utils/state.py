@@ -1,6 +1,15 @@
+import os
 import uuid
 
 import streamlit as st
+
+# In Docker the env var is set; default to "api" mode automatically.
+_DEFAULT_MODE = "api" if os.getenv("CHATGPI_API_BASE_URL") else "mock"
+_MODE_LABELS = {
+    "api": "FastAPI Backend",
+    "local_rag": "Local RAG Chain",
+    "mock": "Mock Assistant",
+}
 
 
 def init_session_state() -> None:
@@ -16,9 +25,11 @@ def init_session_state() -> None:
             "Grounding response...",
             "Synthesizing insights...",
         ],
-        "service_mode": "mock",
-        "model_status": "Mock Assistant",
+        "service_mode": _DEFAULT_MODE,
+        "model_status": _MODE_LABELS[_DEFAULT_MODE],
         "has_greeted": False,
+        "is_authenticated": False,
+        "guest_api_key": "",
     }
 
     for key, value in defaults.items():

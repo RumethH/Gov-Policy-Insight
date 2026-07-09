@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any, Dict, Protocol
+from typing import Any, Dict, Optional, Protocol
 
 import requests
 
 
 class ChatService(Protocol):
-    def ask(self, prompt: str, conversation_id: str, stream: bool = False) -> Dict[str, Any]:
+    def ask(self, prompt: str, conversation_id: str, stream: bool = False, api_key: Optional[str] = None) -> Dict[str, Any]:
         ...
 
     def greeting(self, conversation_id: str) -> str:
@@ -18,7 +18,7 @@ class ChatService(Protocol):
 class MockChatService:
     """Local development fallback with realistic shape."""
 
-    def ask(self, prompt: str, conversation_id: str, stream: bool = False) -> Any:
+    def ask(self, prompt: str, conversation_id: str, stream: bool = False, api_key: Optional[str] = None) -> Any:
         _ = conversation_id
         answer = (
             "Based on current policy guidance, agencies should establish clear ownership, "
@@ -71,16 +71,16 @@ class LocalRAGChatService:
             raise RuntimeError(f"Unable to import local RAG chain: {exc}") from exc
         self._chain = RAGChain()
 
-    def ask(self, prompt: str, conversation_id: str, stream: bool = False) -> Any:
+    def ask(self, prompt: str, conversation_id: str, stream: bool = False, api_key: Optional[str] = None) -> Any:
         _ = conversation_id
         if stream:
-            stream_gen, citations = self._chain.run(prompt, stream=True)
+            stream_gen, citations = self._chain.run(prompt, stream=True, api_key=api_key)
             def chunk_generator():
                 for chunk in stream_gen:
                     yield {"answer_chunk": chunk.content, "citations": citations}
             return chunk_generator()
         else:
-            return self._chain.run(prompt, stream=False)
+            return self._chain.run(prompt, stream=False, api_key=api_key)
 
     def greeting(self, conversation_id: str) -> str:
         _ = conversation_id
@@ -104,12 +104,14 @@ class FastAPIChatService:
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url.rstrip("/")
 
-    def ask(self, prompt: str, conversation_id: str, stream: bool = False) -> Dict[str, Any]:
+    def ask(self, prompt: str, conversation_id: str, stream: bool = False, api_key: Optional[str] = None) -> Dict[str, Any]:
         payload = {"prompt": prompt, "conversation_id": conversation_id, "stream": stream}
+        headers = {"X-Gemini-API-Key": api_key} if api_key else {}
         try:
             response = requests.post(
                 f"{self.base_url}/chat",
                 json=payload,
+                headers=headers,
                 timeout=45,
             )
             response.raise_for_status()

@@ -1,6 +1,6 @@
 import os
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from backend.core.chains import RAGChain
 
@@ -23,24 +23,22 @@ class GreetingRequest(BaseModel):
     conversation_id: str
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, x_gemini_api_key: Optional[str] = Header(default=None)):
+    api_key = x_gemini_api_key or None
     if request.stream:
-        # FastAPI doesn't easily support streaming the same way Streamlit expects it 
-        # in this specific setup without complex EventSourceResponse.
-        # For now, we return the full response if called via REST.
-        response = chain.run(request.prompt, stream=False)
+        response = chain.run(request.prompt, stream=False, api_key=api_key)
         return ChatResponse(
             answer=response["answer"],
             citations=response["citations"],
-            metadata={"mode": "api_fallback_from_stream"}
+            metadata=response.get("metadata") or {"mode": "api_fallback_from_stream"},
         )
-    
+
     try:
-        response = chain.run(request.prompt, stream=False)
+        response = chain.run(request.prompt, stream=False, api_key=api_key)
         return ChatResponse(
             answer=response["answer"],
             citations=response["citations"],
-            metadata={"mode": "api"}
+            metadata=response.get("metadata") or {"mode": "api"},
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
