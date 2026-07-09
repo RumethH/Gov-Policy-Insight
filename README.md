@@ -2,7 +2,7 @@
 
 A production-ready RAG (Retrieval-Augmented Generation) application designed for government policy analysis. This project focuses on deterministic evaluation, PII safety, and verifiable citations.
 
-**[Live Demo](https://chat-gpi.com)**
+**[Live Demo](https://chat-gpi.com)** — demo passcode: `nsw-policy-demo`
 
 ## 🚀 Overview
 
@@ -107,6 +107,7 @@ docker-compose up --build
 The application is deployed on an **AWS EC2 instance (`t2.micro`/`t3.micro`)** running Docker Compose, secured behind a production-grade Nginx reverse proxy and Let's Encrypt SSL.
 
 - **Live Demo URL:** [https://chat-gpi.com](https://chat-gpi.com)
+- **Demo Access:** The demo is gated behind a passcode to deter bots and casual quota drain — enter `nsw-policy-demo` when prompted. (Configurable via the `DEMO_PASSCODE` environment variable.)
 
 ### 🛡️ Production Security Architecture
 To meet enterprise and government safety standards, the deployment includes:
