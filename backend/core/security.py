@@ -9,21 +9,25 @@ class SecurityManager:
         Initializes the Presidio Analyzer and Anonymizer.
         """
         try:
-            # Configure Presidio to use the lightweight en_core_web_sm model
-            # to save memory and storage (especially on AWS EC2 Free Tier).
+            # Configure Presidio to use en_core_web_md: better NER recall than
+            # en_core_web_sm (~+240 MB RAM) while still fitting the 1 GB EC2 host,
+            # unlike the ~600 MB en_core_web_lg default.
             nlp_config = {
                 "nlp_engine_name": "spacy",
-                "models": [{"project_or_path": "en_core_web_sm", "model_name": "en"}]
+                "models": [{"lang_code": "en", "model_name": "en_core_web_md"}]
             }
             provider = NlpEngineProvider(nlp_configuration=nlp_config)
             nlp_engine = provider.create_engine()
-            
+
             self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
             self.anonymizer = AnonymizerEngine()
-            print("✅ Security Manager initialized (PII & Redaction using en_core_web_sm)")
+            print("✅ Security Manager initialized (PII & Redaction using en_core_web_md)")
         except Exception as e:
             try:
-                # Fallback to default model in case of any issues
+                # Fallback to default model in case of any issues.
+                # WARNING: the default engine loads en_core_web_lg (~600 MB RAM),
+                # which can OOM small instances — this path should never be hit.
+                print(f"⚠️ en_core_web_md engine failed ({e}); falling back to default model")
                 self.analyzer = AnalyzerEngine()
                 self.anonymizer = AnonymizerEngine()
                 print("✅ Security Manager initialized (PII & Redaction using default model)")

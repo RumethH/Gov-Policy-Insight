@@ -91,7 +91,7 @@ Run once (or when new PDFs are added to `data/`). Loads all PDFs via `PyPDFLoade
 
 ### Security (`backend/core/security.py`)
 
-`SecurityManager` wraps Microsoft Presidio with `en_core_web_sm` (lightweight spaCy model). `check_injection()` is a fast blacklist check. `redact_pii()` replaces entities with typed labels (`[NAME]`, `[EMAIL]`, etc.).
+`SecurityManager` wraps Microsoft Presidio with `en_core_web_md` (mid-size spaCy model — best NER recall that fits the 1 GB production host). `check_injection()` is a fast blacklist check. `redact_pii()` replaces entities with typed labels (`[NAME]`, `[EMAIL]`, etc.).
 
 ### Semantic Cache (`backend/core/cache.py`)
 
