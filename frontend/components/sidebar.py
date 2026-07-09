@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from typing import Optional
 
@@ -35,10 +36,14 @@ def render_sidebar() -> Optional[str]:
     st.info(f"Model: {st.session_state.model_status}")
 
     with st.expander("Settings"):
+        # local_rag loads the full RAG stack (spaCy, embeddings, FlashRank) inside
+        # the frontend process — too heavy for the production container, so hide it
+        # when the frontend is deployed against the API backend.
+        mode_options = ["mock", "api"] if os.getenv("CHATGPI_API_BASE_URL") else ["mock", "local_rag", "api"]
         service_mode = st.selectbox(
             "Response Source",
-            options=["mock", "local_rag", "api"],
-            index=["mock", "local_rag", "api"].index(st.session_state.service_mode),
+            options=mode_options,
+            index=mode_options.index(st.session_state.service_mode),
         )
         if service_mode != st.session_state.service_mode:
             st.session_state.service_mode = service_mode
